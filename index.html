@@ -1,0 +1,10 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>明月高悬</title><style>body{margin:0;background:#162459;color:#fff;font-family:sans-serif;display:grid;place-items:center;min-height:100vh}p{letter-spacing:.2em}</style></head><body><p>世界缝隙之间 · 正在加载…</p><script>
+(async()=>{try{
+const parts=Array.from({length:7},(_,i)=>'site/part-'+String(i+1).padStart(2,'0')+'.txt');
+const responses=await Promise.all(parts.map(p=>fetch(p,{cache:'no-cache'})));
+if(responses.some(r=>!r.ok))throw Error('网站文件加载失败');
+const html=(await Promise.all(responses.map(r=>r.text()))).join('');
+document.open();document.write(html);document.close();
+}catch(e){document.body.innerHTML='<p>加载失败，请刷新页面重试。</p>';console.error(e)}})();
+</script></body></html>
