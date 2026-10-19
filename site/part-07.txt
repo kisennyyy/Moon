@@ -1,0 +1,385 @@
+x.id===id)||{id:'t'+Date.now(),n:'',wid:'',...pre};
+ const m=document.createElement('div');m.className='mask';
+ m.innerHTML=`<div class="win"><div class="bar"><span>TIMELINE · ${id?'编辑':'新建'}时间线</span><span id="tx2" style="cursor:pointer">✕</span></div><div class="box"><label>时间线名称</label><input type="text" id="tn" value="${esc(t.n)}"><label>所属世界观</label><select id="tw">${opt([{v:'',l:'其他（不关联世界观）'},{v:'canon',l:'原著世界观'},...W().map(w=>({v:String(w.id),l:w.t||'（无题）'}))],t.wid)}</select><div class="row"><button class="btn o" id="tcx">取消</button><button class="btn" id="tk">保存</button></div></div></div>`;
+ document.body.appendChild(m);
+ $('#tx2').onclick=$('#tcx').onclick=()=>m.remove();
+ $('#tk').onclick=()=>{const n=$('#tn').value.trim();if(!n){alert('请先写个名字');return}t.n=n;t.wid=$('#tw').value;if(!DB._tls.includes(t))DB._tls.push(t);tlsel=t.id;if(!wfil(t))wf='';save();m.remove();render()};
+}
+B.time=()=>{
+ $('#tadd').onclick=()=>tlEdit(null,{wid:rwf()});
+ if($('#n1'))$('#n1').onclick=()=>edit('time',null,{tl:tlsel});
+ if($('#tren'))$('#tren').onclick=()=>tlEdit(tlsel);
+ if($('#tdel'))$('#tdel').onclick=()=>{if(DB._tls.length<2){alert('至少要保留一条时间线');return}if(!confirm('删除这条时间线以及里面的所有事件？'))return;const fb=DB._tls.find(x=>x.id!==tlsel).id;DB.time=DB.time.filter(e=>(e.tl&&DB._tls.some(t=>t.id===e.tl)?e.tl:DB._tls[0].id)!==tlsel);DB._tls=DB._tls.filter(x=>x.id!==tlsel);tlsel=fb;save();render()};
+};
+
+/* ---------- pages ---------- */
+function render(){
+ document.body.classList.toggle('home',cur==='home');
+ const main=$('#main');
+ cur==='home'?homePage(main):zonePage(main);
+ af();
+ if(lastNew){const el=document.querySelector(`[data-i="${lastNew}"]`);if(el)el.scrollIntoView({behavior:'smooth',block:'center'});lastNew=0}
+}
+function homePage(main){
+ let h=`<section class="pn hero">${cam('deco d1')}${cam('deco d2')}<div class="pol"><div class="pf" id="pf">${DB._ph.cover?`<img src="${DB._ph.cover}">`:''}</div><span class="ptag" id="stat" contenteditable="true" spellcheck="false" title="点击直接修改">${esc(DB._stat==null?'Clair de Lune':DB._stat)}</span>${cam('pc')}${pbtn('cover')}</div>
+  <div class="ht"><div class="sm">✧ between worlds ✧</div><h2 id="title">明月高悬</h2><div class="sm sm2">世界缝隙之间</div><div class="orn">${cam()}</div><div class="sm">MOON AGE ${age().toFixed(1)} DAYS</div></div>
+  <div class="bub"><div class="ci">${cam('','pointer-events:none')}</div><div>我们还有无数时间交汇的未来<small>— 世界缝隙之间</small></div></div></section>`;
+ h+=`<section class="pn sec">${cam('deco d1')}<div class="hd"><div class="en">ZONES</div><div class="cn">分区 · 点一朵山茶或一片雪进入</div></div><div class="zs">${ZN.map((z,i)=>`<button class="zb ${i%2?'sn':''}" data-go="${z.id}"><span class="ic"><svg viewBox="0 0 100 100"><use href="#${i%2?'snow':'cam'}"/></svg></span><b>${z.n}</b><i>${z.en}</i></button>`).join('')}</div></section>`;
+ h+=`<section class="pn sec">${cam('deco d1')}${ph('sec_home','banner')}<div class="hd"><div class="en">MESSAGES</div><div class="cn">留言板</div></div><div class="tools"><input id="qm" placeholder="写一条留言，回车贴到板上…"><button class="btn" id="pm">贴上去</button></div><div class="tools"><input id="q" placeholder="搜索留言 SEARCH…" value="${esc(q)}"></div>${boardHTML('msg')}</section>`;
+ main.innerHTML=h;
+ $('#q').oninput=e=>{q=e.target.value;af()};
+ const post=()=>{const v=$('#qm').value.trim();if(!v)return;const e={id:Date.now(),t:'',c:'',b:v,d:today(),img:'',who:''};DB.msg.push(e);lastNew=e.id;save();render()};
+ $('#pm').onclick=post;$('#qm').onkeydown=e=>{if(e.key==='Enter')post()};
+ bindBoard('msg');
+ if(!DB._ph.cover)dotField($('#pf'),.9);
+ let n=0,tm;
+ $('#title').onclick=e=>{
+  const c=document.createElement('span');c.className='cr';c.style.left=e.clientX+'px';c.style.top=e.clientY+'px';document.body.appendChild(c);setTimeout(()=>c.remove(),950);
+  clearTimeout(tm);n++;tm=setTimeout(()=>n=0,1500);if(n>=5){n=0;egg()}};
+}
+function zonePage(main){
+ const s=SEC.find(x=>x.id===cur),l=DB[cur]=DB[cur]||[];
+ main.innerHTML=`<section class="pn sec">${cam('deco d1')}${ph('sec_'+cur,'banner')}<div class="hd"><button class="btn o hb" data-go="home">← 首页</button><div class="en">${s.en}</div><div class="cn">${s.n}</div></div>${Z[cur](l)}</section>`;
+ const qi=$('#q');if(qi)qi.oninput=e=>{q=e.target.value;af()};
+ main.querySelectorAll('.chip[data-c]').forEach(b=>b.onclick=()=>{cat=b.dataset.c;main.querySelectorAll('.chip[data-c]').forEach(x=>x.classList.toggle('on',x.dataset.c===cat));af()});
+ const w=$('#wf');if(w)w.onchange=e=>{wf=e.target.value;render()};
+ if(B[cur])B[cur]();
+ const n1=$('#n1');if(n1&&!n1.onclick)n1.onclick=()=>edit(cur);
+ main.querySelectorAll('.item,.pcard,.fc,.te,.chc').forEach(el=>el.onclick=ev=>{
+  if(ev.target.closest('a,button'))return;
+  cur==='draft'?readDoc(+el.dataset.i):edit(el.dataset.s,+el.dataset.i)});
+}
+function act(a,w){
+ ({wback:()=>{wopen=null;render()},wedit:()=>edit('world',w),addch:()=>edit('char',null,{wid:String(w),ch:CHS.includes(ctab)?ctab:CHS[0]}),addlo:()=>edit('lore',null,{wid:String(w)}),adddr:()=>editDoc(null,{wid:String(w)}),gochar:()=>{wf=String(w);go('char')},golore:()=>{wf=String(w);go('lore')},godraft:()=>{wf=String(w);go('draft')},addtl:()=>tlEdit(null,{wid:String(w)}),gotl:()=>{wf=String(w);go('time')}})[a]();
+}
+$('#main').addEventListener('click',e=>{
+ const t=e.target;let x;
+ if(x=t.closest('[data-go]')){if(x.dataset.go==='world')wopen=null;return go(x.dataset.go)}
+ if(x=t.closest('[data-tab]')){ctab=x.dataset.tab;return render()}
+ if(x=t.closest('[data-tl]')){tlsel=x.dataset.tl;return render()}
+ if(x=t.closest('[data-wo]')){wopen=+x.dataset.wo;return render()}
+ if(x=t.closest('[data-edr]'))return editDoc(+x.dataset.edr);
+ if(x=t.closest('[data-ech]'))return edit('char',+x.dataset.ech);
+ if(x=t.closest('[data-elo]'))return edit('lore',+x.dataset.elo);
+ if(x=t.closest('[data-etl]')){const t2=DB._tls.find(z=>z.id===x.dataset.etl);wf=t2&&t2.wid?String(t2.wid):'none';tlsel=x.dataset.etl;return go('time')}
+ if(x=t.closest('[data-act]'))act(x.dataset.act,wopen);
+});
+$('.homeb').onclick=()=>go('home');
+
+/* ---------- generic editor (modal) ---------- */
+function edit(sec,id,pre){
+ const s=SEC.find(x=>x.id===sec),list=DB[sec]=DB[sec]||[];
+ const e=list.find(x=>x.id===id)||{id:Date.now(),t:'',c:'',b:'',d:today(),img:'',...pre};
+ const cats=catsOf(list);
+ const xs=(s.x||[]).map(f=>{
+  let ctl;
+  if(f.a)ctl=`<textarea id="x_${f.k}" style="height:90px">${esc(e[f.k])}</textarea>`;
+  else if(f.w)ctl=`<select id="x_${f.k}">${opt(wopts(),e[f.k])}</select>`;
+  else if(f.tl)ctl=`<select id="x_${f.k}">${opt(DB._tls.map(t=>({v:t.id,l:t.n})),e[f.k]||DB._tls[0].id)}</select>`;
+  else if(f.o)ctl=`<select id="x_${f.k}">${opt((f.nb?f.o:['',...f.o]).map(o=>({v:o,l:o})),e[f.k])}</select>`;
+  else ctl=`<input type="text" id="x_${f.k}" value="${esc(e[f.k])}">`;
+  return `<label>${f.l}</label>${ctl}`}).join('');
+ const m=document.createElement('div');m.className='mask';
+ m.innerHTML=`<div class="win"><div class="bar"><span>${s.en} · ${s.n}</span><span id="x" style="cursor:pointer">✕</span></div><div class="box">
+ ${s.nt?'':`<label>${s.tl||'标题'}</label><input type="text" id="et" value="${esc(e.t)}">`}
+ ${s.nc?'':`<label>分类</label><input type="text" id="ec" list="cl" value="${esc(e.c)}"><datalist id="cl">${cats.map(c=>`<option value="${esc(c)}">`).join('')}</datalist>`}
+ <label>日期</label><input type="date" id="ed" value="${esc(e.d)}">${xs}
+ <label>图片（可选）</label><input type="file" id="ef" accept="image/*"><div id="pv">${e.img?`<img class="pre" src="${e.img}">`:''}</div>
+ <label>${s.bl||'内容'}</label><textarea id="eb" placeholder="${esc(s.ph||'')}">${esc(e.b)}</textarea>
+ <div class="row">${id?'<button class="btn o" id="del">删除</button>':''}<button class="btn o" id="rmi">移除图片</button><button class="btn" id="ok">保存</button></div></div></div>`;
+ document.body.appendChild(m);
+ let img=e.img;
+ const g=k=>{const el=m.querySelector('#'+k);return el?el.value:''};
+ $('#ef').onchange=ev=>{const f=ev.target.files[0];if(f)shrink(f,700,u=>{img=u;$('#pv').innerHTML=`<img class="pre" src="${u}">`})};
+ const close=()=>m.remove();
+ $('#x').onclick=close;
+ $('#rmi').onclick=()=>{img='';$('#pv').innerHTML=''};
+ if($('#del'))$('#del').onclick=()=>{if(confirm('确定删除？')){DB[sec]=list.filter(x=>x.id!==e.id);save();close();render()}};
+ $('#ok').onclick=()=>{
+  if(!s.nt)e.t=g('et').trim();if(!s.nc)e.c=g('ec').trim();e.d=g('ed');(s.x||[]).forEach(f=>{e[f.k]=g('x_'+f.k)});e.b=g('eb');e.img=img;
+  if(!list.includes(e))list.push(e);
+  if(!id&&(sec==='msg'||sec==='idea'))lastNew=e.id;
+  save();close();render();
+ };
+}
+
+/* ---------- manuscripts: reader + rich editor ---------- */
+function readDoc(id){
+ const e=(DB.draft||[]).find(x=>x.id===id);if(!e)return;
+ const html=getH(e),o=document.createElement('div');o.className='ov';
+ o.innerHTML=`<div class="ovb"><button class="btn o" id="rc">← 返回</button><span class="grow"></span><button class="btn" id="re">编辑</button><button class="btn o" id="rw">导出 Word</button><button class="btn o" id="rp">导出 PDF</button></div><div class="rdw"><article class="doc"><h1>${esc(e.t)||'（无题）'}</h1><div class="dm">${esc(e.c||'正文')}${e.wid?' · '+esc(wlabel(String(e.wid))):''} · ${cnt(e.b)} 字 · ${esc(e.d)}</div>${html}</article></div>`;
+ document.body.appendChild(o);
+ $('#rc').onclick=()=>o.remove();
+ $('#re').onclick=()=>{o.remove();editDoc(id)};
+ $('#rw').onclick=()=>exWord(e.t,html);$('#rp').onclick=()=>exPdf(e.t,html);
+}
+function editDoc(id,pre){
+ const list=DB.draft=DB.draft||[];
+ const e=list.find(x=>x.id===id)||{id:Date.now(),t:'',c:'正文',wid:'',h:'',b:'',d:today(),vs:[],...pre};
+ e.vs=e.vs||[];
+ const o=document.createElement('div');o.className='ov';
+ o.innerHTML=`<div class="ovb"><button class="btn o" id="dc">← 返回</button><input id="dt" class="dti" placeholder="标题" value="${esc(e.t)}"><select id="dcat" class="sel">${DCATS.map(c=>`<option ${c===(e.c||'正文')?'selected':''}>${c}</option>`).join('')}</select><select id="dwd" class="sel" title="关联世界观">${opt(wopts(),e.wid)}</select></div>
+ <div class="tb2" id="dtb">${[['h1','大标题'],['h2','小标题'],['bold','粗体'],['italic','斜体'],['underline','下划线'],['ul','• 列表'],['ol','1. 列表'],['quote','引用'],['p','正文']].map(([c,n])=>`<button data-cmd="${c}">${n}</button>`).join('')}</div>
+ <div class="edm"><aside class="tree" id="tree"></aside><div class="eaw"><div class="ea" id="ea" contenteditable="true" spellcheck="false"></div></div></div>
+ <div class="ovf"><span id="wc2">0 字</span><span id="sst" style="opacity:.6">未修改</span><span class="grow"></span><button class="btn o" id="dh">历史版本 (<span id="vn">${e.vs.length}</span>)</button><button class="btn o" id="dsn">存快照</button><button class="btn o" id="dr2">阅读模式</button><button class="btn o" id="dw1">导出 Word</button><button class="btn o" id="dp1">导出 PDF</button>${id?'<button class="btn o" id="dd">删除</button>':''}</div>`;
+ document.body.appendChild(o);
+ const ea=$('#ea');ea.innerHTML=getH(e);
+ let tm=0,tr=0,dirty=0,lastSnap='';
+ const last=()=>e.vs[e.vs.length-1];
+ if(last())lastSnap=(last().b||'')+'|'+(last().h||'');
+ const cur_=()=>({h:ea.innerHTML,b:ea.innerText.trim()});
+ const sst=m=>{$('#sst').textContent=m};
+ const wcU=()=>{$('#wc2').textContent=cnt(ea.innerText)+' 字'};
+ const treeU=()=>{const hs=[...ea.querySelectorAll('h1,h2')];$('#tree').innerHTML='<b>章节树</b>'+(hs.length?hs.map((h,i)=>`<a class="${h.tagName==='H2'?'l2':''}" data-hi="${i}">${esc(h.textContent)||'（空）'}</a>`).join(''):'<div style="opacity:.6;margin-top:6px">用「大标题 / 小标题」生成章节树</div>')};
+ $('#tree').onclick=ev=>{const a=ev.target.closest('[data-hi]');if(a)ea.querySelectorAll('h1,h2')[+a.dataset.hi].scrollIntoView({behavior:'smooth',block:'start'})};
+ const apply=()=>{const c=cur_();e.t=$('#dt').value.trim();e.c=$('#dcat').value;e.wid=$('#dwd').value;e.h=c.h;e.b=c.b;if(!list.includes(e)){if(!e.t&&!e.b)return false;list.push(e)}return true};
+ const snapshot=force=>{const c=cur_(),key=c.b+'|'+c.h;if(!force&&(key===lastSnap||!c.b))return false;e.vs.push({t:new Date().toLocaleString('zh-CN'),h:c.h,b:c.b,ts:Date.now()});if(e.vs.length>30)e.vs.shift();lastSnap=key;$('#vn').textContent=e.vs.length;return true};
+ const doSave=()=>{if(!apply())return;const l2=last();if(!l2||Date.now()-(l2.ts||0)>600000)snapshot();save();dirty=0;sst('已保存 '+new Date().toLocaleTimeString('zh-CN'))};
+ const sched=()=>{dirty=1;sst('编辑中…');clearTimeout(tm);tm=setTimeout(doSave,1100);wcU();clearTimeout(tr);tr=setTimeout(treeU,300)};
+ wcU();treeU();
+ ea.oninput=sched;$('#dt').oninput=sched;$('#dcat').onchange=sched;$('#dwd').onchange=sched;
+ ea.onpaste=ev=>{ev.preventDefault();document.execCommand('insertText',false,(ev.clipboardData||window.clipboardData).getData('text/plain'))};
+ $('#dtb').onmousedown=ev=>ev.preventDefault();
+ $('#dtb').onclick=ev=>{const b=ev.target.closest('[data-cmd]');if(!b)return;ea.focus();const x=(c,v)=>document.execCommand(c,false,v);
+  ({h1:()=>x('formatBlock','<h1>'),h2:()=>x('formatBlock','<h2>'),bold:()=>x('bold'),italic:()=>x('italic'),underline:()=>x('underline'),ul:()=>x('insertUnorderedList'),ol:()=>x('insertOrderedList'),quote:()=>x('formatBlock','<blockquote>'),p:()=>x('formatBlock','<p>')})[b.dataset.cmd]();sched()};
+ const flush=()=>{clearTimeout(tm);if(apply()){snapshot();save()}};
+ const closeMe=()=>{flush();o.remove();render()};
+ $('#dc').onclick=closeMe;
+ $('#dsn').onclick=()=>{if(apply()){snapshot(true);save();sst('已存快照')}};
+ $('#dr2').onclick=()=>{flush();o.remove();render();if(list.includes(e))readDoc(e.id)};
+ $('#dw1').onclick=()=>exWord($('#dt').value.trim(),clean(ea.innerHTML));
+ $('#dp1').onclick=()=>exPdf($('#dt').value.trim(),clean(ea.innerHTML));
+ if($('#dd'))$('#dd').onclick=()=>{if(confirm('确定删除这篇文稿？')){clearTimeout(tm);DB.draft=list.filter(x=>x.id!==e.id);save();o.remove();render()}};
+ $('#dh').onclick=()=>{
+  const m=document.createElement('div');m.className='mask top';
+  m.innerHTML=`<div class="win"><div class="bar"><span>历史版本 · 最多保留 30 个</span><span id="hx" style="cursor:pointer">✕</span></div><div class="box">${e.vs.length?e.vs.map((v,i)=>`<div class="vr"><span>${esc(v.t)} · ${cnt(v.b)} 字</span><button class="btn o" data-r="${i}">恢复</button></div>`).reverse().join(''):'<div class="empty">还没有快照</div>'}</div></div>`;
+  document.body.appendChild(m);
+  m.querySelector('#hx').onclick=()=>m.remove();
+  m.onclick=ev=>{const b=ev.target.closest('[data-r]');if(!b)return;if(!confirm('恢复到这个版本？当前内容会先存成快照'))return;const v=e.vs[+b.dataset.r];snapshot(true);ea.innerHTML=clean(v.h||plain2html(v.b));apply();save();treeU();wcU();sst('已恢复');m.remove()};
+ };
+}
+
+/* ---------- tarot draw ---------- */
+function askDraw(){
+ const m=document.createElement('div');m.className='mask';
+ m.innerHTML=`<div class="win"><div class="bar"><span>TAROT · 抽牌提问</span><span id="ax" style="cursor:pointer">✕</span></div><div class="box"><label>你想问什么？</label><textarea id="aq" style="height:90px" placeholder="写下你的问题…"></textarea><div class="row"><button class="btn o" id="a1">抽一张</button><button class="btn" id="a3">三牌阵</button></div></div></div>`;
+ document.body.appendChild(m);
+ $('#ax').onclick=()=>m.remove();
+ const go2=n=>{const v=$('#aq').value.trim();m.remove();draw(n,v)};
+ $('#a1').onclick=()=>go2(1);$('#a3').onclick=()=>go2(3);
+}
+function draw(n,qv){
+ const ix=[...Array(22).keys()].sort(()=>Math.random()-.5).slice(0,n),rv=ix.map(()=>Math.random()<.5),pos=['过去','现在','未来'];
+ const nm=k=>TAR[ix[k]]+(rv[k]?'（逆位）':'（正位）');
+ const m=document.createElement('div');m.className='mask';
+ m.innerHTML=`<div>${qv?`<div class="tq">问：${esc(qv)}</div>`:''}<div class="tr3">${ix.map((i,k)=>`<div class="tw2"><div class="tcard ${n>1?'s':''}"><div class="f front">☾</div><div class="f back ${rv[k]?'rv':''}"><div class="in"><em>${ROM[i]}</em>${cam('','font-size:'+(n>1?34:54)+'px')}<b>${TAR[i]}</b><small>${rv[k]?'逆位':'正位'}</small></div></div></div>${n>1?`<div class="pl">${pos[k]}</div>`:''}</div>`).join('')}</div><div class="row c"><button class="btn o" id="tx">关闭</button><button class="btn" id="tr">记录</button></div></div>`;
+ document.body.appendChild(m);
+ m.querySelectorAll('.tcard').forEach((c,k)=>setTimeout(()=>c.classList.add('flip'),300+k*600));
+ $('#tx').onclick=()=>m.remove();
+ $('#tr').onclick=()=>{m.remove();edit('tarot',null,{sp:'抽牌提问',qu:qv||'',t:qv?qv.slice(0,24):(n>1?'三牌阵':nm(0)),b:n>1?ix.map((_,k)=>pos[k]+'：'+nm(k)).join('\n'):nm(0)})};
+}
+
+/* ---------- weather (Open-Meteo, manual fallback) ---------- */
+const WXL={'大风':'乖乖戴好帽子，捂好耳朵，不要头痛。','下雪':'我猜有一个人又要小手冰凉了，过来吧，给你暖暖。','阴天':'要当心下雨，不然就麻烦了。','晴天':'天气这么好，一会陪我出去走走，运动一下。','多云':'啊…又迷失在人生的道路上了。','下雨':'外面在下雨，不如就留在家里看小说吧？'};
+const WXI={'大风':'≈','下雪':'❄','阴天':'☁','晴天':'☀','多云':'⛅','下雨':'☂'};
+let wxMenu=0;
+function wxName(code,wind){
+ if((code>=71&&code<=77)||code===85||code===86)return '下雪';
+ if((code>=51&&code<=67)||(code>=80&&code<=82)||code>=95)return '下雨';
+ if(wind>=39)return '大风';
+ if(code===0||code===1)return '晴天';
+ if(code===2)return '多云';
+ return '阴天';
+}
+async function wxGet(url){const ac=new AbortController(),t=setTimeout(()=>ac.abort(),9000);try{const r=await fetch(url,{signal:ac.signal});return await r.json()}finally{clearTimeout(t)}}
+async function wxFetch(force){
+ const w=DB._wx;if(!w||w.lat==null)return;
+ if(!force&&w.c&&Date.now()-w.c.t<18e5)return;
+ try{const j=await wxGet(`https://api.open-meteo.com/v1/forecast?latitude=${w.lat}&longitude=${w.lon}&current=temperature_2m,weather_code,wind_speed_10m&timezone=auto`),c=j.current;
+  w.c={t:Date.now(),name:wxName(c.weather_code,c.wind_speed_10m),temp:Math.round(c.temperature_2m),wind:Math.round(c.wind_speed_10m)};w.err=0;save()}catch(e){w.err=1}
+ wxRender();
+}
+function wxRender(){
+ const el=$('#wx');if(!el)return;
+ const w=DB._wx||{},name=w.man||(w.c&&w.c.name);
+ let h='';
+ if(name)h=`<div class="wxr"><span class="wxi">${WXI[name]}</span><div><b>${name}</b><small>${w.man?'手动选择':(w.c?w.c.temp+'°C · 风 '+w.c.wind+' km/h':'')}${w.place&&!w.man?' · '+esc(w.place):''}</small></div></div><div class="wxb">${esc(WXL[name])}</div>`;
+ else h=`<div class="wxb">${w.err?'天气获取失败，可以手动选择今天的天气 ✿':'点「定位」或「城市」获取天气，也可以手动选择 ✿'}</div>`;
+ h+=`<div class="wxc"><button data-wx="loc">定位</button><button data-wx="city">城市</button><button data-wx="man" class="${wxMenu?'on':''}">手动</button></div>`;
+ if(wxMenu)h+=`<div class="wxc">${Object.keys(WXL).map(n=>`<button data-wm="${n}" class="${w.man===n?'on':''}">${n}</button>`).join('')}<button data-wm="">自动</button></div>`;
+ el.innerHTML=h;
+}
+$('#td').addEventListener('click',async e=>{
+ const b=e.target.closest('[data-wx],[data-wm]');if(!b)return;
+ DB._wx=DB._wx||{};const w=DB._wx;
+ if(b.dataset.wm!=null){w.man=b.dataset.wm;save();return wxRender()}
+ const a=b.dataset.wx;
+ if(a==='man'){wxMenu=!wxMenu;return wxRender()}
+ if(a==='loc'){
+  if(!navigator.geolocation){alert('这个浏览器不支持定位，请用「城市」输入');return}
+  navigator.geolocation.getCurrentPosition(p=>{Object.assign(w,{lat:p.coords.latitude,lon:p.coords.longitude,place:'当前位置',c:null,man:'',err:0});save();wxFetch(true)},()=>alert('没能获取位置（用本地文件直接打开时浏览器常会拒绝），请改用「城市」输入'),{timeout:9000});
+ }
+ if(a==='city'){
+  const n=(prompt('输入城市名（例如：上海、成都、Tokyo）')||'').trim();if(!n)return;
+  try{const j=await wxGet(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(n)}&count=1&language=zh&format=json`),r=j.results&&j.results[0];
+   if(!r){alert('没找到这个城市，换个写法试试');return}
+   Object.assign(w,{lat:r.latitude,lon:r.longitude,place:r.name,c:null,man:'',err:0});save();wxFetch(true);
+  }catch(x){w.err=1;wxRender();alert('网络请求失败，可以先用「手动」选择天气')}
+ }
+});
+
+/* ---------- music player ---------- */
+const IC={play:'<svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z" fill="currentColor"/></svg>',pause:'<svg viewBox="0 0 24 24"><path d="M7 5h4v14H7zM13 5h4v14h-4z" fill="currentColor"/></svg>',prev:'<svg viewBox="0 0 24 24"><path d="M6 5h2v14H6zM20 5v14L9 12z" fill="currentColor"/></svg>',next:'<svg viewBox="0 0 24 24"><path d="M16 5h2v14h-2zM4 5v14l11-7z" fill="currentColor"/></svg>',big:'<svg viewBox="0 0 24 24"><path d="M4 4h6v2H6v4H4zM20 20h-6v-2h4v-4h2zM20 4v6h-2V6h-4V4zM4 20v-6h2v4h4v2z" fill="currentColor"/></svg>'};
+const memUrl={};
+const idb=(()=>{try{return new Promise((res,rej)=>{const r=indexedDB.open('mingyue-music',1);r.onupgradeneeded=()=>r.result.createObjectStore('t');r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error)})}catch(e){return Promise.reject(e)}})();
+idb.catch(()=>{});
+const idbPut=(k,v)=>idb.then(d=>new Promise((res,rej)=>{const t=d.transaction('t','readwrite');t.objectStore('t').put(v,k);t.oncomplete=res;t.onerror=()=>rej(t.error)}));
+const idbGet=k=>idb.then(d=>new Promise((res,rej)=>{const r=d.transaction('t').objectStore('t').get(k);r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error)}));
+const idbDel=k=>idb.then(d=>{d.transaction('t','readwrite').objectStore('t').delete(k)}).catch(()=>{});
+const AU=new Audio();AU.preload='metadata';
+const mp=document.createElement('div');mp.id='mp';
+mp.innerHTML=`<div class="mpb"><div class="vk spin"></div></div>
+<div class="mpr"><div class="vk spin"></div><div class="mpt" id="mpt1">还没有音乐</div><button class="ib" data-mp="prev" title="上一首">${IC.prev}</button><button class="ib pl" data-mp="play" title="播放 / 暂停">${IC.play}</button><button class="ib" data-mp="next" title="下一首">${IC.next}</button><button class="ib" data-mp="big" title="展开唱片">${IC.big}</button><div class="mpp"><i id="mpi1"></i></div></div>
+<div class="mpl"><div class="mph"><span>MUSIC</span><button class="ib" data-mp="ball" title="收起成小球" style="width:24px;height:24px;background:rgba(255,255,255,.22);color:#fff">—</button></div><div class="mpbd"><div class="vk spin"></div><div class="mptt" id="mpt2">还没有音乐</div><input type="range" id="mpseek" min="0" max="1000" value="0"><div class="mpd"><span id="mpc">0:00</span><span id="mpd">0:00</span></div>
+<div class="mpc2"><button class="mpmode" id="mpmode" data-mp="mode">顺序</button><button class="ib" data-mp="prev" title="上一首">${IC.prev}</button><button class="ib pl" data-mp="play" title="播放 / 暂停">${IC.play}</button><button class="ib" data-mp="next" title="下一首">${IC.next}</button></div>
+<div class="mpvr">音量 <input type="range" id="mpvol" min="0" max="100"></div><div class="mpls" id="mpls"></div>
+<div class="mpa"><button class="btn o" data-mp="addf">导入本地音乐</button><button class="btn o" data-mp="addu">添加链接</button><input type="file" id="mpf" accept="audio/*" multiple hidden></div><div class="mpm" id="mpm"></div></div></div>`;
+document.body.appendChild(mp);
+const mq=x=>mp.querySelector(x);
+const fmt=t=>isFinite(t)&&t>0?Math.floor(t/60)+':'+String(Math.floor(t%60)).padStart(2,'0'):'0:00';
+let mmsg=0;
+function mpMsg(t){mq('#mpm').textContent=t;clearTimeout(mmsg);mmsg=setTimeout(()=>{mq('#mpm').textContent=''},4500)}
+function mpClamp(){
+ const rect=mp.getBoundingClientRect();
+ const width=Math.min(mp.offsetWidth,innerWidth),height=Math.min(mp.offsetHeight,innerHeight);
+ const x=Math.max(0,Math.min(innerWidth-width,rect.left));
+ const y=Math.max(0,Math.min(innerHeight-height,rect.top));
+ mp.style.left=x+'px';mp.style.top=y+'px';
+ mp.style.right=mp.style.bottom='auto';
+ DB._mpos={x,y};
+}
+function mpSet(st){
+ const old=mp.getBoundingClientRect();
+ mp.classList.remove('ball','bar','big');mp.classList.add(st);
+ // The old top-left is only an anchor; clamp after the new mode has its real dimensions.
+ const w=mp.offsetWidth,h=mp.offsetHeight;
+ const x=Math.max(0,Math.min(innerWidth-w,old.left));
+ const y=Math.max(0,Math.min(innerHeight-h,old.top));
+ mp.style.left=x+'px';mp.style.top=y+'px';
+ mp.style.right=mp.style.bottom='auto';
+ DB._mp.st=st;DB._mpos={x,y};save();
+}
+function mpUI(){
+ const m=DB._mp,t=m.list[m.idx],nm=t?t.n:'还没有音乐 · 展开后导入',pl=!AU.paused&&!!AU.getAttribute('src');
+ mp.classList.toggle('playing',pl);
+ mq('#mpt1').textContent=nm;mq('#mpt2').textContent=nm;mq('.mpb').title=nm;
+ mp.querySelectorAll('[data-mp="play"]').forEach(b=>{b.innerHTML=pl?IC.pause:IC.play});
+ mq('#mpmode').textContent=['顺序','单曲','随机'][m.mode||0];
+ mq('#mpls').innerHTML=m.list.length?m.list.map((x,i)=>`<div class="mpi ${i===m.idx?'on':''}" data-pi="${i}"><span>${esc(x.n)}${x.type==='url'?' ↗':''}</span><b data-pd="${i}" title="删除">✕</b></div>`).join(''):'<div style="opacity:.55;text-align:center">播放列表是空的</div>';
+}
+function mpProg(){
+ const d=AU.duration||0,c=AU.currentTime||0;
+ mq('#mpi1').style.width=d?(c/d*100)+'%':'0';
+ const sk=mq('#mpseek');if(document.activeElement!==sk)sk.value=d?c/d*1000:0;
+ mq('#mpc').textContent=fmt(c);mq('#mpd').textContent=fmt(d);
+}
+async function mpLoad(i,autoplay){
+ const m=DB._mp,L=m.list;if(!L.length)return;
+ i=((i%L.length)+L.length)%L.length;m.idx=i;const t=L[i];
+ let src=t.url;
+ if(t.type==='file'){
+  src=memUrl[t.id];
+  if(!src){try{const b=await idbGet(t.id);if(b)src=memUrl[t.id]=URL.createObjectURL(b)}catch(e){}}
+  if(!src){AU.pause();AU.removeAttribute('src');mpMsg('这首的文件不在这台设备上，请重新导入');save();mpUI();mpProg();return}
+ }
+ AU.src=src;AU.volume=m.vol==null?.8:m.vol;save();mpUI();mpProg();
+ if(autoplay){try{await AU.play()}catch(e){mpMsg('这首没法播放（链接可能不是音频直链，或被网站限制）')}}
+}
+async function mpToggle(){
+ const m=DB._mp;
+ if(!m.list.length){mpSet('big');mpMsg('先导入本地音乐或添加链接 ✿');return}
+ if(!AU.getAttribute('src')){await mpLoad(m.idx,true);return}
+ if(AU.paused){try{await AU.play()}catch(e){mpMsg('这首没法播放')}}else AU.pause();
+}
+const mpNext=()=>{const m=DB._mp;if(m.list.length)mpLoad(m.mode===2?Math.floor(Math.random()*m.list.length):m.idx+1,true)};
+const mpPrev=()=>{const m=DB._mp;if(!m.list.length)return;if(AU.currentTime>3){AU.currentTime=0;return}mpLoad(m.idx-1,true)};
+function mpDel(i){
+ const m=DB._mp,t=m.list[i];if(!t)return;
+ if(t.type==='file'){idbDel(t.id);if(memUrl[t.id]){URL.revokeObjectURL(memUrl[t.id]);delete memUrl[t.id]}}
+ const wasCur=i===m.idx,playing=!AU.paused;m.list.splice(i,1);
+ if(!m.list.length){AU.pause();AU.removeAttribute('src');m.idx=0}
+ else if(wasCur){m.idx=Math.min(i,m.list.length-1);mpLoad(m.idx,playing)}
+ else if(i<m.idx)m.idx--;
+ save();mpUI();mpProg();
+}
+function mpAddUrl(){
+ const u=(prompt('音乐链接（需要是 mp3 / m4a / wav / ogg 等音频文件的直链）')||'').trim();if(!u)return;
+ if(!/^https?:\/\//i.test(u)){alert('链接要以 http:// 或 https:// 开头');return}
+ let n='链接音乐';try{n=decodeURIComponent((u.split('?')[0].split('/').pop()||'').replace(/\.[^.]+$/,''))||n}catch(e){}
+ n=(prompt('给它起个名字',n)||n).trim()||n;
+ const m=DB._mp,was=!m.list.length;m.list.push({id:'u'+Date.now(),n,type:'url',url:u});save();
+ if(was){m.idx=0;mpLoad(0,true)}else mpUI();
+}
+mq('#mpf').onchange=ev=>{
+ const fs=[...ev.target.files];if(!fs.length)return;
+ const m=DB._mp,was=!m.list.length;
+ fs.forEach((f,i)=>{const id='m'+Date.now()+i;memUrl[id]=URL.createObjectURL(f);idbPut(id,f).catch(()=>mpMsg('这个浏览器不能长期保存文件，关掉页面后需要重新导入'));m.list.push({id,n:f.name.replace(/\.[^.]+$/,''),type:'file'})});
+ ev.target.value='';save();
+ if(was){m.idx=0;mpLoad(0,true)}else mpUI();
+};
+mp.addEventListener('click',e=>{
+ const a=e.target.closest('[data-mp]'),pi=e.target.closest('[data-pi]'),pd=e.target.closest('[data-pd]');
+ if(pd){mpDel(+pd.dataset.pd);return}
+ if(pi){mpLoad(+pi.dataset.pi,true);return}
+ if(!a)return;
+ ({play:mpToggle,prev:mpPrev,next:mpNext,big:()=>mpSet('big'),ball:()=>mpSet('ball'),mode:()=>{const m=DB._mp;m.mode=((m.mode||0)+1)%3;save();mpUI()},addf:()=>mq('#mpf').click(),addu:mpAddUrl})[a.dataset.mp]();
+});
+mq('#mpseek').oninput=e=>{if(AU.duration)AU.currentTime=e.target.value/1000*AU.duration};
+mq('#mpvol').oninput=e=>{DB._mp.vol=e.target.value/100;AU.volume=DB._mp.vol;save()};
+AU.onplay=AU.onpause=mpUI;AU.ontimeupdate=AU.onloadedmetadata=AU.ondurationchange=mpProg;
+AU.onerror=()=>{if(AU.getAttribute('src'))mpMsg('这首没法播放（链接可能不是音频直链，或格式不支持）');mpUI()};
+AU.onended=()=>{const m=DB._mp;if(!m.list.length)return;if(m.mode===1){AU.currentTime=0;AU.play().catch(()=>{});return}mpLoad(m.mode===2?Math.floor(Math.random()*m.list.length):m.idx+1,true)};
+fdrag(mp,mq('.mpb'),()=>mpSet('bar'),'_mpos');
+fdrag(mp,mq('.mpr'),null,'_mpos');
+fdrag(mp,mq('.mph'),null,'_mpos');
+fdrag(mp,mq('.mpl .vk'),null,'_mpos');
+(function(){
+ const m=DB._mp;
+ mp.classList.add(m.st||'ball');
+ if(DB._mpos){mp.style.left=DB._mpos.x+'px';mp.style.top=DB._mpos.y+'px';mp.style.right=mp.style.bottom='auto'}
+ mpClamp();
+ mq('#mpvol').value=Math.round((m.vol==null?.8:m.vol)*100);AU.volume=m.vol==null?.8:m.vol;
+ mpUI();
+ if(m.list.length)mpLoad(m.idx,false);
+ addEventListener('resize',mpClamp);
+})();
+
+/* ---------- status bar + backup (global) ---------- */
+document.addEventListener('focusout',e=>{if(e.target.id==='stat'){DB._stat=e.target.textContent.trim().slice(0,30);save()}});
+document.addEventListener('keydown',e=>{if(e.target.id==='stat'&&e.key==='Enter'){e.preventDefault();e.target.blur()}});
+$('#exp').onclick=()=>{const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(DB)],{type:'application/json'}));a.download='明月高悬备份_'+today()+'.json';a.click()};
+$('#imp').onclick=()=>$('#impf').click();
+$('#impf').onchange=e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{try{const d=JSON.parse(r.result);if(confirm('导入将覆盖当前内容，继续吗？')){DB=d;mig();save();all();todo()}}catch(x){alert('文件格式不正确')}};r.readAsText(f);e.target.value=''};
+
+function egg(L=['一瞬间的念头有很多','未来','幸福','还有你']){
+ if($('#egg'))return;
+ const d=document.createElement('div');d.id='egg';
+ d.innerHTML='<svg width="0" height="0" style="position:absolute"><filter id="rip" x="-30%" y="-30%" width="160%" height="160%"><feTurbulence id="rt" type="fractalNoise" baseFrequency="0.01 0.03" numOctaves="2" seed="4" result="n"/><feDisplacementMap id="rd" in="SourceGraphic" in2="n" scale="60" xChannelSelector="R" yChannelSelector="G"/></filter></svg>'
+  +[0,1,2,3].map(i=>`<span class="r" style="animation-delay:${i*1.1}s"></span>`).join('')
+  +'<div class="t" id="et2">'+L.join('<br>')+'</div>';
+ d.onclick=()=>d.remove();document.body.appendChild(d);
+ const rd=$('#rd'),rt=$('#rt'),tx=$('#et2'),t0=performance.now();
+ (function f(){
+  if(!d.isConnected)return;
+  const t=(performance.now()-t0)/1000;
+  rd.setAttribute('scale',Math.max(0,60*Math.exp(-t*.85)).toFixed(1));
+  rt.setAttribute('baseFrequency',(0.01+0.004*Math.sin(t*2)).toFixed(4)+' '+(0.03+0.006*Math.cos(t*1.7)).toFixed(4));
+  tx.style.opacity=t<1.6?t/1.6:t<5.4?1:Math.max(0,(7.2-t)/1.8);
+  if(t>7.2){d.remove();return}
+  requestAnimationFrame(f);
+ })();
+}
+widgets();all();
+</script>
+</body>
+</html>
